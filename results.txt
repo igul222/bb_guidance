@@ -1,0 +1,4 @@
+FID     Command
+11.28   python unconditional.py --n_samples=10000 --n_timesteps=100
+6.74    python unconditional.py --n_samples=50000 --n_timesteps=100
+4.10    python unconditional.py --n_samples=50000 --n_timesteps=1000
