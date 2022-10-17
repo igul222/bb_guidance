@@ -76,6 +76,8 @@ def main(**args):
 
     def generate_samples(n_samples):
         # Implementation follows Appendix A.4 eqn 33 of VDM
+        items = []
+        grads = []
         with torch.no_grad():
             z = torch.randn((n_samples, 3, img_size, img_size)).cuda()
             for t in range(T-1, -1, -T//args.n_timesteps):
@@ -99,14 +101,17 @@ def main(**args):
                     if args.classifier_type == 'noisy':
                         logits = classifier(z.float(), t_batch.long())
                     else:
-                        raise NotImplementedError
-                        # logits = classifier(x0_pred.float())
+                        logits = classifier(x0_pred.float())
                         # testing
                         # logits = classifier(z.float())
                     logp_y_given_z = F.log_softmax(logits, dim=-1)[:, args.class_index]
                     grad = torch.autograd.grad(logp_y_given_z.sum(), [z])[0]
                 # classifier guidance
-                x0_pred += args.classifier_scale * grad * (1 - alpha_squared[t]) / alpha_squared[t].sqrt()
+                # skip the first few steps, otherwise this term blows up
+                # 999.75, 995.75, 987.75, 983.75
+                if t_batch[0].item() < 999.75:
+                    x0_pred += args.classifier_scale * grad * (1 - alpha_squared[t]) / alpha_squared[t].sqrt()
+                # x0_pred = x0_pred.clamp(-1, 1)
                 if s >= 0:
                     c = -torch.expm1(gamma[s] - gamma[t])
                     z *= (1 - c) * (alpha_squared[s] / alpha_squared[t]).sqrt()

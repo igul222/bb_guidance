@@ -9,3 +9,7 @@ python guidance.py --n_timesteps 250 --dataset cifar10 --classifier_type noisy -
 
 # our x0 hack (TODO)
 python guidance.py --n_timesteps 1000 --dataset cifar10 --classifier_type denoised --classifier_scale 3.0
+
+python guidance.py --n_timesteps 1000 --dataset cifar10 --classifier_type denoised --classifier_scale 3.0
+
+python guidance.py --n_timesteps 250 --dataset cifar10 --classifier_type denoised --classifier_scale 3.0
