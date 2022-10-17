@@ -1,0 +1,11 @@
+# install 
+pip install pytorch_fid_wrapper
+
+# unconditional generation
+python unconditional.py
+
+# guided generation (vanilla noisy classifier)
+python guidance.py --n_timesteps 250 --dataset cifar10 --classifier_type noisy --classifier_scale 3.0
+
+# our x0 hack (TODO)
+python guidance.py --n_timesteps 1000 --dataset cifar10 --classifier_type denoised --classifier_scale 3.0

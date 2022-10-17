@@ -110,3 +110,17 @@ def get_batch(x, batch_size):
     else:
         idx = torch.randint(low=0, high=x.shape[0], size=(batch_size,))
         return x[idx]
+
+def get_dataset_dim(dataset):
+    if dataset == 'cifar10':
+        return 32
+    elif dataset == 'imagenet64':
+        return 64
+    elif dataset == 'imagenet128':
+        return 128
+    elif dataset == 'imagenet256':
+        return 256
+    # elif dataset == 'imagenet512':
+    #     return 512
+    else:
+        raise NotImplementedError

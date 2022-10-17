@@ -621,7 +621,7 @@ class UNetModel(nn.Module):
             result["up"].append(h.type(x.dtype))
         return result
 
-def load_cifar10_unet_and_T():
+def load_cifar10_unet_and_T(checkpoint_dir):
     unet = UNetModel(
         in_channels=3,
         model_channels=128,
@@ -636,8 +636,12 @@ def load_cifar10_unet_and_T():
         num_heads_upsample=-1,
         use_scale_shift_norm=True
     )
+    # unet.load_state_dict(th.load(os.path.join(
+    #     os.environ['DATA_DIR'],
+    #     'improved_diffusion_checkpoints/cifar10_uncond_50M_500K.pt'
+    # )))
     unet.load_state_dict(th.load(os.path.join(
-        os.environ['DATA_DIR'],
-        'improved_diffusion_checkpoints/cifar10_uncond_50M_500K.pt'
+        checkpoint_dir, 
+        'cifar10_uncond_50M_500K.pt'
     )))
     return unet, 4000
