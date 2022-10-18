@@ -13,3 +13,11 @@ python guidance.py --n_timesteps 1000 --dataset cifar10 --classifier_type denois
 python guidance.py --n_timesteps 1000 --dataset cifar10 --classifier_type denoised --classifier_scale 3.0
 
 python guidance.py --n_timesteps 250 --dataset cifar10 --classifier_type denoised --classifier_scale 3.0
+
+# doing FID computation
+python guidance.py --dataset cifar10 --classifier_type noisy --classifier_scale 10.0 --n_timesteps=1000 --n_samples=50000 --compute_fid=True --save_intermediate=False --exp_name=noisy_scale10_fid
+
+
+python guidance.py --n_timesteps 1000 --dataset cifar10 --classifier_type denoised --classifier_scale 10.0 --num_skip 100
+
+CUDA_VISIBLE_DEVICES=1 python guidance.py --n_timesteps 1000 --dataset cifar10 --classifier_type denoised --classifier_scale 10.0 --num_skip 1 --exp_name=denoised_skip1_scale10
