@@ -19,6 +19,9 @@ def main(**args):
     args = lib.utils.AttributeDict(args)
     args.setdefault('n_samples', 10_000)
     args.setdefault('n_timesteps', 100)
+    args.setdefault('checkpoint_dir', '/atlas2/u/kechoi/vanilla-classifier-guidance/checkpoints')
+    args.setdefault('compute_fid', False)
+    args.setdefault('sampling_type', 'ddpm')
     lib.utils.print_args(args)
 
     # Lots of annoying big/small numbers throughout this code, so we'll do
@@ -27,7 +30,7 @@ def main(**args):
     torch.set_default_dtype(torch.float64)
 
     # Load model with pretrained weights
-    model, T = lib.unet.load_cifar10_unet_and_T()
+    model, T = lib.unet.load_cifar10_unet_and_T(args.checkpoint_dir)
     model = model.float().cuda().eval()
     lib.utils.print_model(model)
 
@@ -56,33 +59,40 @@ def main(**args):
                     / alpha_squared[t].sqrt()
                 ).clamp(-1, 1)
                 if s >= 0:
-                    c = -torch.expm1(gamma[s] - gamma[t])
-                    z *= (1 - c) * (alpha_squared[s] / alpha_squared[t]).sqrt()
-                    z += c * alpha_squared[s].sqrt() * x0_pred.double()
-                    z += (c * (1-alpha_squared[s])).sqrt() * torch.randn_like(z)
+                    if args.sampling_type == 'ddpm':
+                        c = -torch.expm1(gamma[s] - gamma[t])
+                        z *= (1 - c) * (alpha_squared[s] / alpha_squared[t]).sqrt()
+                        z += c * alpha_squared[s].sqrt() * x0_pred.double()
+                        z += (c * (1-alpha_squared[s])).sqrt() * torch.randn_like(z)
+                    else: # DDIM
+                        z = (
+                            x0_pred.double() * alpha_squared[s].sqrt()
+                            + ((1-alpha_squared[s])).sqrt() * epsilon_pred
+                        )
             return x0_pred
 
     print('Generating samples for viewing...')
     samples = generate_samples(64)
     samples_uint8 = ((samples + 1) * 127.5).clamp(0, 255).byte()
-    lib.utils.save_image_grid(samples_uint8.permute(0,2,3,1), 'samples.png')
+    lib.utils.save_image_grid(samples_uint8.permute(0,2,3,1), '{}_samples.png'.format(args.sampling_type))
 
     # Compute FID
-    with torch.no_grad():
-        print('Generating samples for FID...')
-        bs = 256
-        n_batches = int(np.ceil(args.n_samples / bs))
-        samples = [generate_samples(bs) for _ in tqdm.tqdm(range(n_batches))]
-        samples = torch.cat(samples, dim=0)[:args.n_samples]
-        samples = (samples.float() + 1) / 2.
-        print('Computing FID...')
-        torch.set_default_dtype(torch.float32)
-        cifar10 = torchvision.datasets.CIFAR10(
-            os.environ['DATA_DIR'], train=True, download=True)
-        X_train = (torch.tensor(cifar10.data).clone() / 255.).permute(0,3,1,2)
-        pfw.set_config(device='cuda:0')
-        fid = pfw.fid(samples, X_train)
-        print(fid)
+    if args.compute_fid:
+        with torch.no_grad():
+            print('Generating samples for FID...')
+            bs = 256
+            n_batches = int(np.ceil(args.n_samples / bs))
+            samples = [generate_samples(bs) for _ in tqdm.tqdm(range(n_batches))]
+            samples = torch.cat(samples, dim=0)[:args.n_samples]
+            samples = (samples.float() + 1) / 2.
+            print('Computing FID...')
+            torch.set_default_dtype(torch.float32)
+            cifar10 = torchvision.datasets.CIFAR10(
+                os.environ['DATA_DIR'], train=True, download=True)
+            X_train = (torch.tensor(cifar10.data).clone() / 255.).permute(0,3,1,2)
+            pfw.set_config(device='cuda:0')
+            fid = pfw.fid(samples, X_train)
+            print(fid)
 
 if __name__ == '__main__':
     fire.Fire(main)

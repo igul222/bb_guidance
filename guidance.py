@@ -35,6 +35,7 @@ def main(**args):
     args.setdefault('out_dir', './samples/')
     args.setdefault('num_skip', 0)
     args.setdefault('exp_name', 'exp')
+    args.setdefault('sampling_type', 'ddpm')
     lib.utils.print_args(args)
 
     # Lots of annoying big/small numbers throughout this code, so we'll do
@@ -130,13 +131,23 @@ def main(**args):
                     x0_pred += args.classifier_scale * grad * (1 - alpha_squared[t]) / alpha_squared[t].sqrt()
                 # x0_pred = x0_pred.clamp(-1, 1)
                 if s >= 0:
-                    c = -torch.expm1(gamma[s] - gamma[t])
-                    z *= (1 - c) * (alpha_squared[s] / alpha_squared[t]).sqrt()
-                    z += c * alpha_squared[s].sqrt() * x0_pred.double()
-                    z += (c * (1-alpha_squared[s])).sqrt() * torch.randn_like(z)  # term 3
+                    if args.sampling_type == 'ddpm':
+                        c = -torch.expm1(gamma[s] - gamma[t])
+                        z *= (1 - c) * (alpha_squared[s] / alpha_squared[t]).sqrt()
+                        z += c * alpha_squared[s].sqrt() * x0_pred.double()
+                        z += (c * (1-alpha_squared[s])).sqrt() * torch.randn_like(z)  # term 3
+                    else:  # DDIM
+                        # TODO: clamping is extremely important here!
+                        x0_pred = x0_pred.clamp(-1, 1)
+                        # if doing guidance, we have to recompute eps_t from the modified x0_t
+                        epsilon_pred = (z - alpha_squared[t].sqrt() * x0_pred.double()) / (1-alpha_squared[t]).sqrt()
+                        z = (
+                            x0_pred.double() * alpha_squared[s].sqrt()
+                            + ((1-alpha_squared[s])).sqrt() * epsilon_pred
+                        )
             return x0_pred.detach().cpu()
 
-    # print('Generating samples for viewing...')
+    print('Generating samples for viewing...')
     samples = generate_samples(64)
     samples_uint8 = ((samples + 1) * 127.5).clamp(0, 255).byte()
     lib.utils.save_image_grid(samples_uint8.permute(0,2,3,1), os.path.join(args.out_dir, '{}_samples.png'.format(args.exp_name)))
